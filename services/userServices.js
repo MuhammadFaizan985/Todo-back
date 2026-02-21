@@ -18,21 +18,28 @@ const getUser = async (email, password) => {
         token, user: {
             username: user.username,
             email: user.email,
-            id: user._id
+            id: user._id,
+            profilePicture: user.profilePicture
         }
     })
 }
 
-const createUser = async (email, username, password) => {
+const createUser = async (email, username, password, profilePicture) => {
     const existingUser = await User.findOne({ $or: [{ email }, { username }] })
     if (existingUser) throw new Error("User already exist")
 
     const hashPassword = await bcrypt.hash(password, 10)
-    const user = await User.create({
+    const userData = {
         username,
         email,
         password: hashPassword
-    })
+    };
+
+    if (profilePicture) {
+        userData.profilePicture = profilePicture;
+    }
+
+    const user = await User.create(userData);
 
     // Generate token for auto-login
     const token = signToken({
@@ -47,4 +54,15 @@ const createUser = async (email, username, password) => {
     return { user: userWithoutPassword, token };
 }
 
-module.exports = { createUser, getUser }
+const getProfile = async (id) => {
+    const user = await User.findById(id);
+    if (!user) throw new Error("User not found");
+    return {
+        username: user.username,
+        email: user.email,
+        id: user._id,
+        profilePicture: user.profilePicture
+    };
+}
+
+module.exports = { createUser, getUser, getProfile }

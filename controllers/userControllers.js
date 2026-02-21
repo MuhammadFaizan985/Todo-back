@@ -11,7 +11,8 @@ const createUserController = async (req, res) => {
         data: null,
       });
     }
-    const result = await userServices.createUser(email, username, password);
+    const profilePicture = req.file ? req.file.path : undefined;
+    const result = await userServices.createUser(email, username, password, profilePicture);
     res
       .status(201)
       .json({
@@ -57,7 +58,7 @@ const getUserController = async (req, res) => {
       // FIX: dynamic sameSite. 'Lax' allows localhost cookies. 'None' is for cross-site prod.
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    }); 0
 
     res
       .status(200)
@@ -91,13 +92,21 @@ const logoutController = (req, res) => {
 };
 
 
-const getProfileController = (req, res) => {
-
-  res.status(200).json({
-    isStatus: true,
-    msg: "User is authenticated",
-    data: req.user
-  });
+const getProfileController = async (req, res) => {
+  try {
+    const user = await userServices.getProfile(req.user.id);
+    res.status(200).json({
+      isStatus: true,
+      msg: "User is authenticated",
+      data: user
+    });
+  } catch (error) {
+    res.status(500).json({
+      isStatus: false,
+      msg: error.message || "Internal Server Error",
+      data: null
+    });
+  }
 };
 
 
