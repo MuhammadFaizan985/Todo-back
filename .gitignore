@@ -25,3 +25,5 @@ build/
 
 # Vercel
 .vercel
+
+Redis-Explanation.md

@@ -1,8 +1,36 @@
-const Todo = require("../models/Todo")
+const Todo = require("../models/Todo");
+const { redisClient } = require("../config/redis");
+
+const invalidateCache = async (username) => {
+  await redisClient.del(`todos:${username}`);
+};
 
 const getAllTodos = async (username) => {
-  const todos = await Todo.find({ username }).sort({ createdAt: -1 })
-  return (todos)
+  const cacheKey = `todos:${username}`;
+
+  try {
+    // Check Redis
+    const cachedTodos = await redisClient.get(cacheKey);
+    if (cachedTodos) {
+      console.log("Serving from Redis cache");
+      return JSON.parse(cachedTodos);
+    }
+  } catch (error) {
+    console.error("Redis get error:", error);
+  }
+
+  // Fetch from MongoDB
+  console.log("Serving from MongoDB");
+  const todos = await Todo.find({ username }).sort({ createdAt: -1 });
+
+  try {
+    // Save in Redis (cache for 1 hour)
+    await redisClient.setEx(cacheKey, 3600, JSON.stringify(todos));
+  } catch (error) {
+    console.error("Redis set error:", error);
+  }
+
+  return todos;
 }
 
 const createTodo = async (todoName, todoDescription, username) => {
@@ -11,6 +39,7 @@ const createTodo = async (todoName, todoDescription, username) => {
     todoName,
     todoDescription
   })
+  await invalidateCache(username);
   return todo;
 }
 
@@ -21,7 +50,7 @@ const deleteTodo = async (todoId, username) => {
   })
   if (result.deletedCount === 0) throw new Error("todo not find")
 
-
+  await invalidateCache(username);
   return result.deletedCount;
 }
 
@@ -30,7 +59,7 @@ const deleteAllTodos = async (username) => {
     username
   })
 
-
+  await invalidateCache(username);
   return result.deletedCount;
 }
 
@@ -55,6 +84,8 @@ const updateTodoStatus = async (id, username) => {
     { new: true },
   );
   if (!todo) throw new Error("Todo not found");
+
+  await invalidateCache(username);
   return todo;
 };
 
