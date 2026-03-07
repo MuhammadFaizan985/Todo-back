@@ -24,10 +24,6 @@ const userSchema = new mongoose.Schema(
             minlength : 6,
             select : false
 
-        },
-        profilePicture : {
-            type : String,
-            default : "https://res.cloudinary.com/dqr6on7vt/image/upload/v1724240017/user_icon_f9q9q9.png"
         }
     },
     {
